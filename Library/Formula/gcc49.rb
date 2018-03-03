@@ -19,11 +19,11 @@ class Gcc49 < Formula
     `uname -r`.chomp
   end
 
-  desc "The GNU Compiler Collection"
+  desc "GNU compiler collection"
   homepage "https://gcc.gnu.org"
-  url "https://ftpmirror.gnu.org/gcc/gcc-4.9.3/gcc-4.9.3.tar.bz2"
-  mirror "https://ftp.gnu.org/gnu/gcc/gcc-4.9.3/gcc-4.9.3.tar.bz2"
-  sha256 "2332b2a5a321b57508b9031354a8503af6fdfb868b8c1748d33028d100a8b67e"
+  url "https://ftpmirror.gnu.org/gcc/gcc-4.9.4/gcc-4.9.4.tar.bz2"
+  mirror "https://ftp.gnu.org/gnu/gcc/gcc-4.9.4/gcc-4.9.4.tar.bz2"
+  sha256 "6c11d292cd01b294f9f84c9a59c230d80e9e4a47e5c6355f046bb36d4f358092"
 
   head "svn://gcc.gnu.org/svn/gcc/branches/gcc-4_9-branch"
 
@@ -34,26 +34,11 @@ class Gcc49 < Formula
     sha256 "dc24f86a9652fbb0ec0bc9dd0103d23bb68c315bd490ee5d0b10a7144453ecc4" => :mavericks
   end
 
-  if MacOS.version >= :yosemite
-    # Fixes build with Xcode 7.
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
-    patch do
-      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
-      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
-    end
-    # Fixes assembler generation with XCode 7
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66509
-    patch do
-      url "https://gist.githubusercontent.com/tdsmith/d248e025029add31e7aa/raw/444e292786df41346a3a1cc6267bba587408a007/gcc.diff"
-      sha256 "636b65a160ccb7417cc4ffc263fc815382f8bb895e32262205cd10d65ea7804a"
-    end
-  end
-
-  option "without-fortran", "Build without the gfortran compiler"
   option "with-java", "Build the gcj compiler"
   option "with-all-languages", "Enable all compilers and languages, except Ada"
   option "with-nls", "Build with native language support (localization)"
   option "with-profiled-build", "Make use of profile guided optimization when bootstrapping GCC"
+  option "without-fortran", "Build without the gfortran compiler"
   # enabling multilib on a host that can't run 64-bit results in build failures
   option "without-multilib", "Build without multilib support" if MacOS.prefer_64_bit?
 
@@ -79,6 +64,25 @@ class Gcc49 < Formula
   # GCC bootstraps itself, so it is OK to have an incompatible C++ stdlib
   cxxstdlib_check :skip
 
+  # Fix an Intel-only build failure on 10.4.
+  # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64184
+  patch :DATA if MacOS.version < :leopard && Hardware.cpu_type == :intel
+
+  if MacOS.version >= :yosemite
+    # Fixes build with Xcode 7.
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
+    patch do
+      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
+      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
+    end
+    # Fixes assembler generation with XCode 7.
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66509
+    patch do
+      url "https://gist.githubusercontent.com/tdsmith/d248e025029add31e7aa/raw/444e292786df41346a3a1cc6267bba587408a007/gcc.diff"
+      sha256 "636b65a160ccb7417cc4ffc263fc815382f8bb895e32262205cd10d65ea7804a"
+    end
+  end
+
   def install
     # GCC will suffer build errors if forced to use a particular linker.
     ENV.delete "LD"
@@ -89,7 +93,7 @@ class Gcc49 < Formula
 
     if build.with? "all-languages"
       # Everything but Ada, which requires a pre-existing GCC Ada compiler
-      # (gnat) to bootstrap. GCC 4.6.0 add go as a language option, but it is
+      # (gnat) to bootstrap. GCC 4.6.0 adds Go as a language option, but it is
       # currently only compilable on Linux.
       languages = %w[c c++ fortran java objc obj-c++]
     else
@@ -125,8 +129,8 @@ class Gcc49 < Formula
       # A no-op unless --HEAD is built because in head warnings will
       # raise errors. But still a good idea to include.
       "--disable-werror",
-      "--with-pkgversion=Homebrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
-      "--with-bugurl=https://github.com/Homebrew/homebrew-versions/issues",
+      "--with-pkgversion=Tigerbrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
+      "--with-bugurl=https://github.com/mistydemeo/tigerbrew/issues",
     ]
 
     # "Building GCC with plugin support requires a host that supports
@@ -143,7 +147,7 @@ class Gcc49 < Formula
       args << "--with-ecj-jar=#{Formula["ecj"].opt_prefix}/share/java/ecj.jar"
     end
 
-    if !MacOS.prefer_64_bit? || build.without?("multilib")
+    if build.without?("multilib") || !MacOS.prefer_64_bit?
       args << "--disable-multilib"
     else
       args << "--enable-multilib"
@@ -178,12 +182,13 @@ class Gcc49 < Formula
 
     # Handle conflicts between GCC formulae.
     # Since GCC 4.8 libffi stuff are no longer shipped.
-
     # Rename man7.
     Dir.glob(man7/"*.7") { |file| add_suffix file, version_suffix }
+
     # Even when suffixes are appended, the info pages conflict when
     # install-info is run. Fix this.
     info.rmtree
+
     # Since GCC 4.9 java properties are properly sandboxed.
   end
 
@@ -207,3 +212,49 @@ class Gcc49 < Formula
     assert_equal "Hello, world!\n", `./hello-c`
   end
 end
+
+__END__
+diff --git a/libcilkrts/runtime/sysdep-unix.c b/libcilkrts/runtime/sysdep-unix.c
+index 1f82b62..41887e7 100644
+--- a/libcilkrts/runtime/sysdep-unix.c
++++ b/libcilkrts/runtime/sysdep-unix.c
+@@ -115,6 +115,10 @@ void *alloca (size_t);
+ #   include <vxCpuLib.h>  
+ #endif
+ 
++#ifdef __APPLE__
++#   include <sys/sysctl.h>
++#endif
++
+ struct global_sysdep_state
+ {
+     pthread_t *threads;    ///< Array of pthreads for system workers
+@@ -629,6 +633,19 @@ static const char *get_runtime_path ()
+ #endif
+ }
+ 
++#ifdef __APPLE__
++static int emulate_sysconf_nproc_onln () {
++    int count = 0;
++    int cmd[2] = { CTL_HW, HW_NCPU };
++    size_t len = sizeof count;
++    int status = sysctl(cmd, 2, &count, &len, 0, 0);
++    assert(status >= 0);
++    assert((unsigned)count == count);
++
++    return count;
++}
++#endif
++
+ /* if the environment variable, CILK_VERSION, is defined, writes the version
+  * information to the specified file.
+  * g is the global state that was just created, and n is the number of workers
+@@ -732,6 +749,8 @@ static void write_version_file (global_state_t *g, int n)
+     fprintf(fp, "==================\n");
+ #ifdef __VXWORKS__      
+     fprintf(fp, "System cores: %d\n", (int)__builtin_popcount(vxCpuEnabledGet()));
++#elif defined __APPLE__
++    fprintf(fp, "System cores: %d\n", emulate_sysconf_nproc_onln());
+ #else    
+     fprintf(fp, "System cores: %d\n", (int)sysconf(_SC_NPROCESSORS_ONLN));
+ #endif    
