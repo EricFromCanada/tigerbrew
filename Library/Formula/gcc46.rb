@@ -31,15 +31,6 @@ class Gcc46 < Formula
     sha256 "8033c9313bf08a7bc825aca65c884027a877052b77418d9fcf1006dd27ac2287" => :mountain_lion
   end
 
-  if MacOS.version >= :el_capitan
-    # Fixes build with Xcode 7.
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
-    patch do
-      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
-      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
-    end
-  end
-
   option "with-fortran", "Build the gfortran compiler"
   option "with-java", "Build the gcj compiler"
   option "with-all-languages", "Enable all compilers and languages, except Ada"
@@ -55,6 +46,7 @@ class Gcc46 < Formula
   deprecated_option "enable-profiled-build" => "with-profiled-build"
   deprecated_option "disable-multilib" => "without-multilib"
 
+  depends_on :ld64
   depends_on "gmp4"
   depends_on "libmpc08"
   depends_on "mpfr2"
@@ -71,10 +63,19 @@ class Gcc46 < Formula
   # GCC bootstraps itself, so it is OK to have an incompatible C++ stdlib
   cxxstdlib_check :skip
 
-  # Fix 10.10 issues: https://gcc.gnu.org/viewcvs/gcc?view=revision&revision=215251
+  # Handle OS X deployment targets correctly (GCC PR target/63810 <https://gcc.gnu.org/bugzilla/show_bug.cgi?id=63810>).
   patch :p0 do
-    url "https://trac.macports.org/export/126996/trunk/dports/lang/gcc48/files/patch-10.10.diff"
-    sha256 "61e5d0f18db59220cbd99717e9b644c1d0f3502b09ada746b60850cacda07328"
+    url "https://trac.macports.org/export/136925/trunk/dports/lang/gcc46/files/macosx-version-min.patch"
+    sha256 "d8ad7c90e9de6a6288310ffe12498747da8db4c703317362e06c8298af7066ef"
+  end
+
+  if MacOS.version >= :el_capitan
+    # Fixes build with Xcode 7.
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
+    patch do
+      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
+      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
+    end
   end
 
   def install
@@ -87,7 +88,7 @@ class Gcc46 < Formula
 
     if build.with? "all-languages"
       # Everything but Ada, which requires a pre-existing GCC Ada compiler
-      # (gnat) to bootstrap. GCC 4.6.0 add go as a language option, but it is
+      # (gnat) to bootstrap. GCC 4.6.0 adds Go as a language option, but it is
       # currently only compilable on Linux.
       languages = %w[c c++ fortran java objc obj-c++]
     else
@@ -123,8 +124,8 @@ class Gcc46 < Formula
       # A no-op unless --HEAD is built because in head warnings will
       # raise errors. But still a good idea to include.
       "--disable-werror",
-      "--with-pkgversion=Homebrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
-      "--with-bugurl=https://github.com/Homebrew/homebrew-versions/issues",
+      "--with-pkgversion=Tigerbrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
+      "--with-bugurl=https://github.com/mistydemeo/tigerbrew/issues",
     ]
 
     # "Building GCC with plugin support requires a host that supports
@@ -141,11 +142,14 @@ class Gcc46 < Formula
       args << "--with-ecj-jar=#{Formula["ecj"].opt_prefix}/share/java/ecj.jar"
     end
 
-    if !MacOS.prefer_64_bit? || build.without?("multilib")
+    if build.without?("multilib") || !MacOS.prefer_64_bit?
       args << "--disable-multilib"
     else
       args << "--enable-multilib"
     end
+
+    # https://stackoverflow.com/a/9345746
+    inreplace "gcc/c-family/c.opt", "F\nC ObjC C++", "F\nDriver C ObjC C++" if MacOS.version < :leopard
 
     mkdir "build" do
       unless MacOS::CLT.installed?
