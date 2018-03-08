@@ -1,5 +1,4 @@
 class Gcc47 < Formula
-  desc "GNU compiler collection"
   def arch
     if Hardware::CPU.type == :intel
       if MacOS.prefer_64_bit?
@@ -20,6 +19,7 @@ class Gcc47 < Formula
     `uname -r`.chomp
   end
 
+  desc "GNU compiler collection"
   homepage "https://gcc.gnu.org"
   url "https://ftpmirror.gnu.org/gcc/gcc-4.7.4/gcc-4.7.4.tar.bz2"
   mirror "https://ftp.gnu.org/gnu/gcc/gcc-4.7.4/gcc-4.7.4.tar.bz2"
@@ -31,15 +31,6 @@ class Gcc47 < Formula
     sha256 "de527788a6fedea2173e340fee47324478e8956ef31868d376c7ac561a8f2952" => :yosemite
     sha256 "b418cec1d503d859e99cb13928a2df8434a9037524f898fe095ea35f615d87f2" => :mavericks
     sha256 "fe211028f9a219f48d127bc946d5f7046b7b6e7f792fd4cd63c1deb393484db3" => :mountain_lion
-  end
-
-  if MacOS.version >= :el_capitan
-    # Fixes build with Xcode 7.
-    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
-    patch do
-      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
-      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
-    end
   end
 
   option "with-fortran", "Build the gfortran compiler"
@@ -83,6 +74,15 @@ class Gcc47 < Formula
     sha256 "61e5d0f18db59220cbd99717e9b644c1d0f3502b09ada746b60850cacda07328"
   end
 
+  if MacOS.version >= :el_capitan
+    # Fixes build with Xcode 7.
+    # https://gcc.gnu.org/bugzilla/show_bug.cgi?id=66523
+    patch do
+      url "https://gcc.gnu.org/bugzilla/attachment.cgi?id=35773"
+      sha256 "db4966ade190fff4ed39976be8d13e84839098711713eff1d08920d37a58f5ec"
+    end
+  end
+
   def install
     # GCC will suffer build errors if forced to use a particular linker.
     ENV.delete "LD"
@@ -93,7 +93,7 @@ class Gcc47 < Formula
 
     if build.with? "all-languages"
       # Everything but Ada, which requires a pre-existing GCC Ada compiler
-      # (gnat) to bootstrap. GCC 4.6.0 add go as a language option, but it is
+      # (gnat) to bootstrap. GCC 4.6.0 adds Go as a language option, but it is
       # currently only compilable on Linux.
       languages = %w[c c++ fortran java objc obj-c++]
     else
@@ -129,8 +129,8 @@ class Gcc47 < Formula
       # A no-op unless --HEAD is built because in head warnings will
       # raise errors. But still a good idea to include.
       "--disable-werror",
-      "--with-pkgversion=Homebrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
-      "--with-bugurl=https://github.com/Homebrew/homebrew-versions/issues",
+      "--with-pkgversion=Tigerbrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
+      "--with-bugurl=https://github.com/mistydemeo/tigerbrew/issues",
     ]
 
     # "Building GCC with plugin support requires a host that supports
@@ -147,7 +147,7 @@ class Gcc47 < Formula
       args << "--with-ecj-jar=#{Formula["ecj"].opt_prefix}/share/java/ecj.jar"
     end
 
-    if !MacOS.prefer_64_bit? || build.without?("multilib")
+    if build.without?("multilib") || !MacOS.prefer_64_bit?
       args << "--disable-multilib"
     else
       args << "--enable-multilib"
