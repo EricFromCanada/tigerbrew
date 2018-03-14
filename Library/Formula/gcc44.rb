@@ -49,6 +49,15 @@ class Gcc44 < Formula
   depends_on "ecj" if build.with?("java") || build.with?("all-languages")
   depends_on MaximumMacOSRequirement => :mavericks
 
+  # The bottles are built on systems with the CLT installed, and do not work
+  # out of the box on Xcode-only systems due to an incorrect sysroot.
+  def pour_bottle?
+    MacOS::CLT.installed?
+  end
+
+  # GCC bootstraps itself, so it is OK to have an incompatible C++ stdlib
+  cxxstdlib_check :skip
+
   # Fix libffi for ppc, from MacPorts
   patch :p0 do
     url "https://trac.macports.org/export/110576/trunk/dports/lang/gcc44/files/ppc_fde_encoding.diff"
@@ -60,15 +69,6 @@ class Gcc44 < Formula
     url "https://trac.macports.org/export/129382/trunk/dports/lang/gcc44/files/macosx-version-min.patch"
     sha256 "9083143d2c60fbd89d33354710381590da770973746dd6849e18835f449510bc"
   end
-
-  # The bottles are built on systems with the CLT installed, and do not work
-  # out of the box on Xcode-only systems due to an incorrect sysroot.
-  def pour_bottle?
-    MacOS::CLT.installed?
-  end
-
-  # GCC bootstraps itself, so it is OK to have an incompatible C++ stdlib
-  cxxstdlib_check :skip
 
   def install
     # GCC will suffer build errors if forced to use a particular linker.
@@ -113,13 +113,13 @@ class Gcc44 < Formula
       "--enable-libstdcxx-time=yes",
       "--enable-stage1-checking",
       "--enable-checking=release",
-      # Multilib building is broken in GCC 4.4 on Darwin
+      # Multilib building is broken in GCC 4.4 on Darwin.
       "--disable-multilib",
       # A no-op unless --HEAD is built because in head warnings will
       # raise errors. But still a good idea to include.
       "--disable-werror",
-      "--with-pkgversion=Homebrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
-      "--with-bugurl=https://github.com/Homebrew/homebrew-versions/issues",
+      "--with-pkgversion=Tigerbrew #{name} #{pkg_version} #{build.used_options*" "}".strip,
+      "--with-bugurl=https://github.com/mistydemeo/tigerbrew/issues",
     ]
 
     args << "--disable-nls" if build.without? "nls"
